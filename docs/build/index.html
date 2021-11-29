@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Espy.jl: result extraction · Espy documentation</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Espy documentation</span></div><form class="docs-search" action="search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href="index.html">Espy.jl: result extraction</a><ul class="internal"><li><a class="tocitem" href="#Code-markup"><span>Code markup</span></a></li><li><a class="tocitem" href="#Creating-a-request"><span>Creating a request</span></a></li><li><a class="tocitem" href="#Requestable-variables"><span>Requestable variables</span></a></li><li><a class="tocitem" href="#Output-access-key"><span>Output access key</span></a></li><li><a class="tocitem" href="#Obtaining-and-accessing-the-outputs"><span>Obtaining and accessing the outputs</span></a></li><li><a class="tocitem" href="#Outputs-from-multiple-calls"><span>Outputs from multiple calls</span></a></li><li class="toplevel"><a class="tocitem" href="#Reference"><span>Reference</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href="index.html">Espy.jl: result extraction</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="index.html">Espy.jl: result extraction</a></li></ul></nav><div class="docs-right"><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Espy.jl:-result-extraction"><a class="docs-heading-anchor" href="#Espy.jl:-result-extraction">Espy.jl: result extraction</a><a id="Espy.jl:-result-extraction-1"></a><a class="docs-heading-anchor-permalink" href="#Espy.jl:-result-extraction" title="Permalink"></a></h1><p>Espy provides functionality to mark variables of interest in the code of a function.  A user can then define which variables are of interest, and obtain their values.</p><h2 id="Code-markup"><a class="docs-heading-anchor" href="#Code-markup">Code markup</a><a id="Code-markup-1"></a><a class="docs-heading-anchor-permalink" href="#Code-markup" title="Permalink"></a></h2><p>The following is an example of annotated code</p><pre><code class="language-julia">1   using Espy
+2   const ngp=2
+4   @espy function residual(x,y)
+3       r = 0
+5       for igp=1:ngp
+6           :z = x[igp]+y[igp]
+7           :s  = :material(z)
+8           r += s
+9       end
+10      return r
+11  end
+12  @espy function material(z)
+13      :a = z+1
+14      :b = a*z
+15      return b
+16  end
+17  requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)</code></pre><p>The code of each function is prepended with <code>@espy</code> (lines 2 and 12).  The name of variables of interest (lines 6, 7 13 and 14) is annotated with a <code>:</code>. These variable names must appear on the left hand side of an equation, and can not be array references (writing <code>:a[igp] = ...</code> will not work). Call to functions which may contain variables of interest must be annotated with a <code>:</code> (line 7).</p><p>The macro <code>@espy</code> will generate two versions of the code: first a clean code (for example)</p><pre><code class="language-julia">1   function material(z)
+2       a = z+1
+3       b = a*z
+4       return b
+5   end</code></pre><p>and second, a version of the code to be used for result extraction.  The function headers will look like:</p><pre><code class="language-julia">function residual(out,req,x,y)
+    ...
+end</code></pre><p>The variables <code>out</code> (for output) and <code>req</code> (for request) are discussed in the following.</p><p>One can modify the code annotation to examine the code that is generated:</p><pre><code class="language-julia">@espydbg true function residual(x,y)
+    ...
+end</code></pre><h2 id="Creating-a-request"><a class="docs-heading-anchor" href="#Creating-a-request">Creating a request</a><a id="Creating-a-request-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-a-request" title="Permalink"></a></h2><p>In order to extract results from a function annotated with <code>@espy</code> and <code>:</code>, the <em>user</em> of the function needs to define a <em>request</em>.  For example</p><pre><code class="language-julia">using Espy
+req = @request gp[].(s,z,material.(a,b))</code></pre><p>This states that in the relevant function (<code>residual</code>), there is a <code>for</code>-loop over variable <code>igp</code> taking values from <code>1</code> to <code>ngp</code>.  Within this loop, variables <code>s</code> and <code>z</code> will appear (and be annotated) and are requested.  Within the same loop, a function <code>material</code> is called (and is annotated).  Within this function, <code>material</code>, variables <code>a</code> and <code>b</code> are requested.</p><p>A slightly more complex example is</p><pre><code class="language-julia">using Espy
+req = @request X,gp[].(F,material.(σ,ε))</code></pre><p>The espied function will contain a variable <code>X</code>, a <code>for</code>-loop within which a variable <code>F</code> will appear, as well as a call to the function <code>material</code> within which variables <code>σ</code> and <code>ε</code> appear.</p><h2 id="Requestable-variables"><a class="docs-heading-anchor" href="#Requestable-variables">Requestable variables</a><a id="Requestable-variables-1"></a><a class="docs-heading-anchor-permalink" href="#Requestable-variables" title="Permalink"></a></h2><p>The <em>programmer</em> of the annotated function must provide a description of the requestable variables and their size, as well as loops with their length, and sub-functions.</p><p>Code line 17 in the first example above provides an example (copied here):</p><pre><code class="language-julia">requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)</code></pre><p>Where some of the variables are arrays, their size must be described:</p><pre><code class="language-julia">ndof        = ...
+nx          = ...
+requestable = (X=[ndof],gp=forloop(ngp,(F=[nx,nx],material=(σ=[nx,nx],ε=[nx,nx]))),)</code></pre><h2 id="Output-access-key"><a class="docs-heading-anchor" href="#Output-access-key">Output access key</a><a id="Output-access-key-1"></a><a class="docs-heading-anchor-permalink" href="#Output-access-key" title="Permalink"></a></h2><p>An espy-key is a data structure with a shape as described in <code>@request</code>, containing indices into the <code>out</code> vector returned by the code generated by <code>@espy</code>.</p><p>Generating this requires</p><ol><li>A request</li><li>A description of the requestable variables</li></ol><pre><code class="language-julia">using Espy
+requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)
+request     = @request gp[].(s,z,material.(a,b))
+key,nkey    = makekey(request,requestable)</code></pre><p>This generates <code>key</code>, such that in this case</p><pre><code class="language-julia">key.gp[1].s          == 1
+key.gp[1].z          == 2
+key.gp[1].material.a == 3
+key.gp[1].material.b == 4
+key.gp[2].s          == 5
+key.gp[2].z          == 6
+key.gp[2].material.a == 7
+key.gp[2].material.b == 8</code></pre><p><code>nkey</code> is the highest index that appears in <code>key</code> (the length of the vector <code>out</code>).  In this example <code>nkey==8</code>.</p><p>Where requestable variables are themselves array, the key will contain arrays of indices:</p><pre><code class="language-julia">key.gp[8].material.σ == [125 126;128 129]</code></pre><h2 id="Obtaining-and-accessing-the-outputs"><a class="docs-heading-anchor" href="#Obtaining-and-accessing-the-outputs">Obtaining and accessing the outputs</a><a id="Obtaining-and-accessing-the-outputs-1"></a><a class="docs-heading-anchor-permalink" href="#Obtaining-and-accessing-the-outputs" title="Permalink"></a></h2><p>The following example shows how the user of an espy-annotated function can obtain and access the <code>out</code> variable.</p><pre><code class="language-julia">1   using Espy
+2   ex       = @request gp[].(s,z,material.(a,b))
+3   key,nkey = makekey(ex)
+4   out      = Vector(undef,nkey)
+5   r        = residual(out,key,x,y)
+6   a        = out[key.gp[1].material.a]
+7   s        = out[key.gp[1].s         ]</code></pre><p>Line 2 creates an expression describing the request.  Line 3 creates the request key, as well as the number of values in the request. Line 4 allocates an array for the outputs, using <code>nkey</code>. In line 5, the <code>residual</code> code generated by <code>@espy</code> is called.  In lines 6 and 7, <code>key</code> is used to access specific outputs.</p><h2 id="Outputs-from-multiple-calls"><a class="docs-heading-anchor" href="#Outputs-from-multiple-calls">Outputs from multiple calls</a><a id="Outputs-from-multiple-calls-1"></a><a class="docs-heading-anchor-permalink" href="#Outputs-from-multiple-calls" title="Permalink"></a></h2><p>Typicaly, a function like <code>residual</code> is called multiple times.  In a FEM setting, we could be interested in the values &#39;for each element&#39; and &#39;for each time step&#39;. Considering that all elements are of the same type (and thus that the dimensions <code>ndim</code>, <code>nnod</code> and <code>ngp</code> are the same for all elements), then <code>key</code> and <code>nkey</code> are the same for all elements. The code then becomes</p><pre><code class="language-julia">...
+1   using Espy
+2   ex        = @request gp[].(s,z,material.(a,b))
+3   key,nkey  = makekey(ex)
+4   out       = Vector(undef,nkey,nel,nstep)
+5   iel,istep = ...
+6   r         = residual(@view(out[:,iel,istep],key,x,y)
+7   a         = out[key.gp[1].material.a,iel,istep]
+8   s         = out[key.gp[1].s         ,iel,istep]</code></pre><p>Thus, a large quantity of results can be stored in one large array, avoiding to clutter the memory-heap many smaller array.</p><h1 id="Reference"><a class="docs-heading-anchor" href="#Reference">Reference</a><a id="Reference-1"></a><a class="docs-heading-anchor-permalink" href="#Reference" title="Permalink"></a></h1><article class="docstring"><header><a class="docstring-binding" id="Espy.@request" href="#Espy.@request"><code>Espy.@request</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia">req = @request expr</code></pre><p>Create a request of internal results wanted from a function. Considering the function presented as example for <a href="index.html#Espy.@espy"><code>@espy</code></a>, examples of possible syntax include</p><pre><code class="language-none">req       = @request gp[].(s,z,material.(a,b))
+req       = @request gp[].(s)
+req       = @request gp[].(material.(a))</code></pre><p>The first expression can be read as follows: &quot;In the function, there is a <code>for</code> loop over variable <code>igp</code>, and the ressults are wanted as a vector (one element for each cycle of the loop).  Each element of the vector shall be a <code>type</code> (a structure) with a field <code>material</code>, because a function of that name is called in the for loop.  Within that function, a variable <code>a</code> is to be retrived.</p><p>Note the need to use parentheses also for single-element lists, as in <code>(s)</code>.</p><p>See also: <a href="index.html#Espy.@espy"><code>@espy</code></a>, <a href="index.html#Espy.@espydbg"><code>@espydbg</code></a>, <a href="index.html#Espy.makekey"><code>makekey</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="Espy.makekey" href="#Espy.makekey"><code>Espy.makekey</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">key = makekey(requested,requestable)</code></pre><p>Create a &quot;key&quot; i.e. a data structure of indices into an array <code>out</code> of internal results, returned by the code generated by <code>@espy</code>.</p><p>Inputs are</p><ul><li><code>requested</code> a data structure defining a request. This input is provided  by the user of the code to specify what results are to be extracted.</li><li><code>requestable</code> a named tuple defining the names and sizes of intermediate results  that can be requested from a given function: this input is provided</li></ul><p><strong>Example</strong></p><pre><code class="language-none">requestable  = (gp=forloop(2, (z=scalar,s=scalar, material=(a=scalar,b=scalar))),)
+requested    = @request gp[].(s,z,material.(a,b))
+key,nkey     = makekey(requested,requestable)</code></pre><p>returns <code>key</code> such that</p><pre><code class="language-none">key.gp[1] == (s=1, z=2, material = (a=3, b=4))
+key.gp[2] == (s=5, z=6, material = (a=7, b=8))
+key.gp[2].material.a == 7
+nkey      == 8</code></pre><p>See also: <a href="index.html#Espy.@espy"><code>@espy</code></a>, <a href="index.html#Espy.@espydbg"><code>@espydbg</code></a>, <a href="index.html#Espy.@request"><code>@request</code></a>, <a href="index.html#Espy.forloop"><code>forloop</code></a>, <a href="index.html#Espy.scalar"><code>scalar</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="Espy.@espy" href="#Espy.@espy"><code>Espy.@espy</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia">@espy function residual(x,y)
+    ngp=2
+    r = 0
+    for igp=1:ngp
+        :z = x[igp]+y[igp]
+        :s,dum  = :material(z)
+        r += s
+    end
+    return r
+end
+@espy function material(z)
+    :a = z+1
+    :b = a*z
+    return b,3.
+end</code></pre><p>Transform the code of a function in which variables and function calls have been annotated with <code>:</code> in order to allow the extraction of intermediate results.</p><p>The above annotated code will result in the generation of &quot;clean&quot; code in which the <code>:</code> annotations have been taken out</p><pre><code class="language-none">function residual(x,y)
+    ngp=2
+    r = 0
+    for igp=1:ngp
+        z = x[igp]+y[igp]
+        s,dum  = material(z)
+        r += s
+    end
+    return r
+end
+function material(z)
+    a = z+1
+    b = a*z
+    return b,3.
+end</code></pre><p>The macro will also generate code with additional <code>out</code> and <code>key</code> arguments:</p><pre><code class="language-none">function residual(out,key,x,y)
+    ngp = 2
+    r   = 0
+    for igp = 1:ngp
+        @espy_loop key gp                     # key_gp = key.gp[igp]
+        z = x[igp]+y[igp]
+        @espy_record out key_gp z             # out[key_gp.z] = z
+        s = @espy_call out key_gp material(z) # s = material(out,key_gp.material,z)
+        @espy_record out key_gp s             # out[key_gp.s] = s
+        r += s
+    end
+    return r
+end
+function material(out,key,z)
+    a = z+1
+    @espy_record out key a                    # out[key.a] = a
+    b = a*z
+    @espy_record out key b                    # out[key.b] = b
+    return b
+end</code></pre><p>The above code contains more macros, which in turn evaluate as shown in the comments.  More precisely,</p><pre><code class="language-none">@espy_record out key a</code></pre><p>evaluates to</p><pre><code class="language-none">if haskey(key,a)
+    out[key.a] = a
+end</code></pre><p><code>key</code> is a datastructure generated by <a href="index.html#Espy.makekey"><code>makekey</code></a> based on a <a href="index.html#Espy.@request"><code>@request</code></a>.</p><p>When the version of <code>residual</code> with additional parameter <code>out</code> has been called, the content of this output is accessed using <code>key</code>:</p><pre><code class="language-none">requestable  = (gp=forloop(2, (z=scalar,s=scalar, material=(a=scalar,b=scalar))),)
+requested    = @request gp[].(s,z,material.(a,b))
+key,nkey     = makekey(requested,requestable)
+residual(out,key,x,y)
+igp          = 2
+z            = out[key.gp[igp].z]</code></pre><p>See also: <a href="index.html#Espy.@espydbg"><code>@espydbg</code></a>, <a href="index.html#Espy.@request"><code>@request</code></a>, <a href="index.html#Espy.makekey"><code>makekey</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="Espy.@espydbg" href="#Espy.@espydbg"><code>Espy.@espydbg</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia">@espydbg function ...
+end</code></pre><p>Run <a href="index.html#Espy.@espy"><code>@espy</code></a> and to generate code and print the output code (for debug purposes).</p><p>See also: <a href="index.html#Espy.@espy"><code>@espy</code></a>, <a href="index.html#Espy.@request"><code>@request</code></a>, <a href="index.html#Espy.makekey"><code>makekey</code></a>, <a href="index.html#Espy.forloop"><code>forloop</code></a>, <a href="index.html#Espy.scalar"><code>scalar</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="Espy.forloop" href="#Espy.forloop"><code>Espy.forloop</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">forloop</code></pre><p>Component to build the <code>requestable</code> input to [<code>makekey</code>(@ref)] See also: <a href="index.html#Espy.makekey"><code>makekey</code></a>, <a href="index.html#Espy.scalar"><code>scalar</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="Espy.scalar" href="#Espy.scalar"><code>Espy.scalar</code></a> — <span class="docstring-category">Constant</span></header><section><div><pre><code class="language-julia">scalar</code></pre><p>Component to build the <code>requestable</code> input to [<code>makekey</code>(@ref)] See also: <a href="index.html#Espy.makekey"><code>makekey</code></a>, <a href="index.html#Espy.forloop"><code>forloop</code></a></p></div></section></article></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 29 November 2021 08:41">Monday 29 November 2021</span>. Using Julia version 1.6.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
