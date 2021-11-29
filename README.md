@@ -1,6 +1,8 @@
 # Espy
 Provide functionality to extract intermediate results that are internal to a function - without cluttering the function.
 
+[`Documentation`](https://github.com/PhilippeMaincon/Espy/blob/master/docs/build/index.html)
+
 **Espy.jl** provides functionality to extract internal variables from a function.
 "Internal" refers here to variables that are neither parameters nor outputs of the function.
 
@@ -32,3 +34,5 @@ function's code
    - a `key` describing where in `out` to store which result.
    Typicaly, this version of the code is called once the computations have been completed, to extract
    the requested results.
+
+[`Documentation`](https://github.com/PhilippeMaincon/Espy/blob/master/docs/build/index.html).
