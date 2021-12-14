@@ -1,11 +1,11 @@
-# Espy.jl: result extraction
-## What does Espy do?
-**Espy.jl** provides functionality to extract internal variables from a function.
+# EspyInsideFunction.jl: result extraction
+## What does EspyInsideFunction do?
+**EspyInsideFunction.jl** provides functionality to extract internal variables from a function.
 "Internal" refers here to variables that are neither parameters nor outputs of the function.
 
 
 
-The need for Espy arises when there is a difference between
+The need for EspyInsideFunction arises when there is a difference between
 - What the rest of the software needs to exchange with the function, in order to
   carry out the software's task.
 and
@@ -23,7 +23,7 @@ Writing the function to explicitly export intermediate results has several disad
   times before an acceptable result is obtained (Newton-Raphson iterations). Even
   tests  `if  converged ...` take time.
 
-Espy's approach to this problem is to use metaprogramming to generate two versions of the
+EspyInsideFunction's approach to this problem is to use metaprogramming to generate two versions of the
 function's code
 1. The fast version, that does nothing to save or export internediate results.  This is then
    used in e.g. the finite element solution process.
@@ -39,7 +39,7 @@ function's code
 ## Code markup
 The following is an example of annotated code
 ```julia
-1   using Espy
+1   using EspyInsideFunction
 2   const ngp=2
 4   @espy function residual(x,y)
 3       r = 0
@@ -89,7 +89,7 @@ In order to extract results from a function annotated with `@espy` and `:`, the 
 a *request*.  For example
 
 ```julia
-using Espy
+using EspyInsideFunction
 req = @request gp[].(s,z,material.(a,b))
 ```
 
@@ -98,7 +98,7 @@ This states that in the relevant function (`residual`), there is a `for`-loop ov
 A slightly more complex example is
 
 ```julia
-using Espy
+using EspyInsideFunction
 req = @request X,gp[].(F,material.(σ,ε))
 ```
 
@@ -134,7 +134,7 @@ Generating this requires
 2. A description of the requestable variables
 
 ```julia
-using Espy
+using EspyInsideFunction
 requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)
 request     = @request gp[].(s,z,material.(a,b))
 key,nkey    = makekey(request,requestable)
@@ -168,7 +168,7 @@ The following example shows how the user of an espy-annotated function can obtai
 the `out` variable.
 
 ```julia
-1   using Espy
+1   using EspyInsideFunction
 2   ex       = @request gp[].(s,z,material.(a,b))
 3   key,nkey = makekey(ex)
 4   out      = Vector(undef,nkey)
@@ -185,7 +185,7 @@ Typicaly, a function like `residual` is called multiple times.  In a FEM setting
 
 ```julia
 ...
-1   using Espy
+1   using EspyInsideFunction
 2   ex        = @request gp[].(s,z,material.(a,b))
 3   key,nkey  = makekey(ex)
 4   out       = Vector(undef,nkey,nel,nstep)
@@ -199,7 +199,7 @@ Thus, a large quantity of results can be stored in one large array, avoiding to 
 
 # Reference
 ```@meta
-CurrentModule = Espy
+CurrentModule = EspyInsideFunction
 ```
 ```@docs
 @request

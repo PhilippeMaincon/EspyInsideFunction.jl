@@ -1,12 +1,12 @@
-# Espy
+# EspyInsideFunction
 Provide functionality to extract intermediate results that are internal to a function - without cluttering the function.
 
-[`Documentation`](https://github.com/PhilippeMaincon/Espy/blob/master/docs/build/index.html)
+[`Documentation`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/docs/build/index.html)
 
-**Espy.jl** provides functionality to extract internal variables from a function.
+**EspyInsideFunction.jl** provides functionality to extract internal variables from a function.
 "Internal" refers here to variables that are neither parameters nor outputs of the function.
 
-The need for Espy arises when there is a difference between
+The need for EspyInsideFunction arises when there is a difference between
 - What the rest of the software needs to exchange with the function, in order to
   carry out the software's task.
 and
@@ -24,7 +24,7 @@ Writing the function to explicitly export intermediate results has several disad
   times before an acceptable result is obtained (Newton-Raphson iterations). Even
   tests  `if  converged ...` take time.
 
-Espy's approach to this problem is to use metaprogramming to generate two versions of the
+EspyInsideFunction's approach to this problem is to use metaprogramming to generate two versions of the
 function's code
 1. The fast version, that does nothing to save or export internediate results.  This is then
    used in e.g. the finite element solution process.
@@ -35,4 +35,4 @@ function's code
    Typicaly, this version of the code is called once the computations have been completed, to extract
    the requested results.
 
-[`Documentation`](https://github.com/PhilippeMaincon/Espy/blob/master/docs/build/index.html).
+[`Documentation`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/docs/build/index.html).

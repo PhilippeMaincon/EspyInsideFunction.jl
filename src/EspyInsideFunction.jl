@@ -1,4 +1,4 @@
-module Espy
+module EspyInsideFunction
 export @request
 export makekey,forloop,scalar
 export @espy,@espydbg
