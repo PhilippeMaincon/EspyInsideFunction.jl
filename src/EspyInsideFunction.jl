@@ -50,7 +50,7 @@ newsym(name) = Symbol(name,"_",string(gensym())[3:end])
     makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
     makefor(e...)               = Expr(:for,e...)
     makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
-    makeespymacro(m,e...)       = Expr(:macrocall,      makesub(:Espy,Symbol("@",m)),:LineNumberHere,e...)
+    makeespymacro(m,e...)       = Expr(:macrocall,      makesub(:EspyInsideFunction,Symbol("@",m)),:LineNumberHere,e...)
     makestructure(e...)         = Expr(:struct,false,   e...)
     makemutable(e...)           = Expr(:struct,true ,   e...)
     makedeclare(e...)           = Expr(:(::),e[1],e[2])
@@ -284,7 +284,7 @@ macro espy_record(out,key,var)
 end
 # @espy_call out key foo(args) → foo(out,key.foo,args...)
 macro espy_call(out,key,f)                                                      # out,key,foo(args)
-    if f.head ≠ :call error("Espy, @espy_call internal error") end
+    if f.head ≠ :call error("EspyInsideFunction, @espy_call internal error") end
     foo     = f.args[1]                                                         # foo
     key_sub = makesub(key,foo)                                                  # key.foo
     fp      = makecall(foo,out,key_sub,f.args[2:end]...)                        # foo(out,key.foo,args)
