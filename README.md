@@ -34,5 +34,3 @@ function's code
    - a `key` describing where in `out` to store which result.
    Typicaly, this version of the code is called once the computations have been completed, to extract
    the requested results.
-
-[`Documentation`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/docs/build/index.html).

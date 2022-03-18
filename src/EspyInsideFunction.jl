@@ -10,59 +10,59 @@ using Printf
 newsym(name) = Symbol(name,"_",string(gensym())[3:end])
 
 ## Tests
-    issymbol(e::Symbol)         = true
-    issymbol(e)                 = false
-    isquote(e::QuoteNode)       = true
-    isquote(e)                  = false
-    isnumber(e::Number)         = true
-    isnumber(e)                 = false
-    isline(e::LineNumberNode)   = true
-    isline(e)                   = false
-    isexpr(e::Expr)             = true
-    isexpr(e,f...)              = false
-    isexpr(s,e::Expr)           = e.head == s
+issymbol(e::Symbol)         = true
+issymbol(e)                 = false
+isquote(e::QuoteNode)       = true
+isquote(e)                  = false
+isnumber(e::Number)         = true
+isnumber(e)                 = false
+isline(e::LineNumberNode)   = true
+isline(e)                   = false
+isexpr(e::Expr)             = true
+isexpr(e,f...)              = false
+isexpr(s,e::Expr)           = e.head == s
 
-    istuple(e)                  = isexpr(e) && e.head == :tuple  # (a,b)
-    isref(e)                    = isexpr(e) && e.head == :ref    # a[b]
-    isdot(e)                    = isexpr(e) && e.head == :(.)    # a.b
-    issub(e)                    = isexpr(e) && e.head == :(.)  && isquote(getright(e))  # a.b
-    isdeclare(e)                = isexpr(e) && e.head == :(::)   # a::b
-    isassign(e)                 = isexpr(e) && e.head == :(=)
-    iscall(e)                   = isexpr(e) && e.head == :call
-    isfunc(e)                   = isexpr(e) && e.head == :function
-    isfor(e)                    = isexpr(e) && e.head == :for
-    isescsymbol(e)              = isexpr(e) && e.head == (:escape) && issymbol(getleft(e))
-    issymbolish(e)              = issymbol(e)||isescsymbol(e)
+istuple(e)                  = isexpr(e) && e.head == :tuple  # (a,b)
+isref(e)                    = isexpr(e) && e.head == :ref    # a[b]
+isdot(e)                    = isexpr(e) && e.head == :(.)    # a.b
+issub(e)                    = isexpr(e) && e.head == :(.)  && isquote(getright(e))  # a.b
+isdeclare(e)                = isexpr(e) && e.head == :(::)   # a::b
+isassign(e)                 = isexpr(e) && e.head == :(=)
+iscall(e)                   = isexpr(e) && e.head == :call
+isfunc(e)                   = isexpr(e) && e.head == :function
+isfor(e)                    = isexpr(e) && e.head == :for
+isescsymbol(e)              = isexpr(e) && e.head == (:escape) && issymbol(getleft(e))
+issymbolish(e)              = issymbol(e)||isescsymbol(e)
 
 ## Analysis
-    getargs(e)                  = (e.args...,)
-    getright(e)                 = e.args[2]
-    getleft(e)                  = e.args[1]
-    getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args[2],to=e.args[1].args[2].args[3],body=e.args[2]) #(var,from,to,body)
+getargs(e)                  = (e.args...,)
+getright(e)                 = e.args[2]
+getleft(e)                  = e.args[1]
+getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args[2],to=e.args[1].args[2].args[3],body=e.args[2]) #(var,from,to,body)
 
 ## Synthesis
-    maketuple(e...)             = Expr(:tuple,          e...)
-    makeref(e...)               = Expr(:ref,            e...)
-    makecall(e...)              = Expr(:call,           e...)
-    makeblock(e...)             = Expr(:block,          e...)
-    makewhere(e...)             = Expr(:where,          e...)
-    makeassign(e...)            = Expr(:(=),            e...)
-    makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
-    makefor(e...)               = Expr(:for,e...)
-    makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
-    makeespymacro(m,e...)       = Expr(:macrocall,      makesub(:EspyInsideFunction,Symbol("@",m)),:LineNumberHere,e...)
-    makestructure(e...)         = Expr(:struct,false,   e...)
-    makemutable(e...)           = Expr(:struct,true ,   e...)
-    makedeclare(e...)           = Expr(:(::),e[1],e[2])
-    makedot(e...)               = Expr(:(.) ,e[1],e[2])
-    makesub(e...)               = Expr(:(.) ,e[1],QuoteNode(e[2]))
+maketuple(e...)             = Expr(:tuple,          e...)
+makeref(e...)               = Expr(:ref,            e...)
+makecall(e...)              = Expr(:call,           e...)
+makeblock(e...)             = Expr(:block,          e...)
+makewhere(e...)             = Expr(:where,          e...)
+makeassign(e...)            = Expr(:(=),            e...)
+makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
+makefor(e...)               = Expr(:for,e...)
+makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
+makeespymacro(m,e...)       = Expr(:macrocall,      makesub(:EspyInsideFunction,Symbol("@",m)),:LineNumberHere,e...)
+makestructure(e...)         = Expr(:struct,false,   e...)
+makemutable(e...)           = Expr(:struct,true ,   e...)
+makedeclare(e...)           = Expr(:(::),e[1],e[2])
+makedot(e...)               = Expr(:(.) ,e[1],e[2])
+makesub(e...)               = Expr(:(.) ,e[1],QuoteNode(e[2]))
 
 ## deline: delete LineNumberNode
-    deline(ex) = ex
-    function deline(ex::Expr)
-        args = deline.(ex.args[.! isline.(ex.args)])
-        return Expr(ex.head,args...)
-    end
+deline(ex) = ex
+function deline(ex::Expr)
+    args = deline.(ex.args[.! isline.(ex.args)])
+    return Expr(ex.head,args...)
+end
 
 ## Take out QuoteNodes
 function dequote(ex::Expr)
@@ -78,53 +78,53 @@ dequote(ex)            = ex
 
 ## For human readable code, use println(ex) or println(deline(ex))
 # To understand the tree structure of an Expression, use pretty(ex)
-    function dent(i)
-        for j = 1:i
-            @printf("   ")
-        end
+function dent(i)
+    for _ = 1:i
+        @printf("   ")
     end
-    pretty(e::Union{Expr,Symbol,LineNumberNode,Symbol,Nothing})   = pretty(e,0)
-    function pretty(e::Expr,ind)
-        dent(ind)
-        @printf("%s\n",e.head)
-        for iarg = 1:length( e.args)
-            pretty(e.args[iarg],ind+1)
-        end
+end
+pretty(e::Union{Expr,Symbol,LineNumberNode,Symbol,Nothing})   = pretty(e,0)
+function pretty(e::Expr,ind)
+    dent(ind)
+    @printf("%s\n",e.head)
+    for iarg = 1:length( e.args)
+        pretty(e.args[iarg],ind+1)
     end
-    function pretty(e::Symbol,ind)
-        dent(ind)
-        @printf("%s\n",e)
-    end
-    function pretty(::Nothing,ind)
-        dent(ind)
-        @printf("Nothing()\n")
-    end
-    function pretty(e::Number,ind)
-        dent(ind)
-        @printf("%g\n",e)
-    end
-    function pretty(e::LineNumberNode,ind)
-        dent(ind)
-        @printf("LineNumberNode\n")
-    end
-    function pretty(x,ind)
-        dent(ind)
-        display(x)
-    end
-    function pretty(m::String)
-        @printf("%s\n",m)
-    end
-    macro pretty(ex)
-        pretty(ex)
-        return ex
-    end
+end
+function pretty(e::Symbol,ind)
+    dent(ind)
+    @printf("%s\n",e)
+end
+function pretty(::Nothing,ind)
+    dent(ind)
+    @printf("Nothing()\n")
+end
+function pretty(e::Number,ind)
+    dent(ind)
+    @printf("%g\n",e)
+end
+function pretty(e::LineNumberNode,ind)
+    dent(ind)
+    @printf("LineNumberNode\n")
+end
+function pretty(x,ind)
+    dent(ind)
+    display(x)
+end
+function pretty(m::String)
+    @printf("%s\n",m)
+end
+macro pretty(ex)
+    pretty(ex)
+    return ex
+end
 
 ## Definition by element of what can be requested
 """
 
     forloop
 
-Component to build the `requestable` input to [`makekey`(@ref)]
+Component to build the `requestable` input to [`makekey`](@ref)
 See also: [`makekey`](@ref), [`scalar`](@ref)
 """
 struct forloop
@@ -135,10 +135,10 @@ end
 
     scalar
 
-Component to build the `requestable` input to [`makekey`(@ref)]
+Component to build the `requestable` input to [`makekey`](@ref)
 See also: [`makekey`](@ref), [`forloop`](@ref)
 """
-scalar = Int64[]
+const scalar = ()#Int64[]
 ## Request definition
 
 struct UnknownSymbolInOutputRequest <: Exception
@@ -192,7 +192,7 @@ end
 function makekey_symbol(cnt,siz) # ex=:a  reqabl=[...]
     len     = prod(siz)
     ndim    = length(siz)
-    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : cnt+1
+    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : [cnt+1]
     cnt    += len
     return key,cnt
 end
@@ -278,7 +278,7 @@ end
 macro espy_record(out,key,var)
     return esc(quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
-            $out[$key.$var] = $var                                              # out[key.x] = x
+            $out[$key.$var] .= $var                                              # out[key.x] = x
         end
     end)
 end
