@@ -18,7 +18,7 @@ end
 @testset "Makekey" begin
     @test EspyInsideFunction.makekey_symbol(2,(2,3)) == ([3 5 7; 4 6 8], 8)
     @test EspyInsideFunction.makekey_tuple(2,:((a,b)),(a=(2,3),b=(2,2))) == ((a=[3 5 7; 4 6 8], b=[9 11; 10 12]), 12)
-    @test EspyInsideFunction.makekey_tuple(2,:((a,b)),(a=(2,3),b=scalar)) == ((a=[3 5 7; 4 6 8], b=[9]), 9)
+    @test EspyInsideFunction.makekey_tuple(2,:((a,b)),(a=(2,3),b=scalar)) == ((a=[3 5 7; 4 6 8], b=9), 9)
     @test EspyInsideFunction.makekey_loop(2,:((a,b)),forloop(3,(a=(2,3),b=(2,2)))) == ([(a=[3 5 7; 4 6 8], b=[9 11; 10 12]), (a=[13 15 17; 14 16 18], b=[19 21; 20 22]), (a=[23 25 27; 24 26 28], b=[29 31; 30 32])], 32)
     @test EspyInsideFunction.makekey_tuple(2,:((a[].(b,)),),(a=forloop(2,(b=(2,3),)),)) == (( a=[(b=[3 5 7; 4 6 8],), (b=[9 11 13; 10 12 14],)] ,), 14)
     @test EspyInsideFunction.makekey_tuple(2,:(a[].b),(a=forloop(2,(b=(2,3),)),)) == ((a=[(b=[3 5 7; 4 6 8],), (b=[9 11 13; 10 12 14],)],), 14)
@@ -101,7 +101,7 @@ x,y       = [1.,2.],[.5,.2]
 r         = residual(@view(out[:,iel,istep]),key,x,y)
 
 @testset "Espy" begin
-    @test key == (gp=[(s=[1], z=[2], material=(a=[3], b=[4])), (s=[5], z=[6], material=(a=[7], b=[8]))],)
+    @test key == (gp=[(s=1, z=2, material=(a=3, b=4)), (s=5, z=6, material=(a=7, b=8))],)
     @test out[:,iel,istep] ≈ [3.75, 1.5, 2.5, 3.75, 7.04, 2.2, 3.2, 7.04]
 end
 

@@ -6,7 +6,7 @@ using Test,Printf
 # silent
 # test high and low level components
 
-@testset "Espy package" begin
+@testset "EspyInsideFunction.jl package" begin
     include("TestEspy.jl")
 end
 println(" ") # suppresses unwanted text output

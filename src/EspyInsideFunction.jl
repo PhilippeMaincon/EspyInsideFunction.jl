@@ -192,7 +192,8 @@ end
 function makekey_symbol(cnt,siz) # ex=:a  reqabl=[...]
     len     = prod(siz)
     ndim    = length(siz)
-    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : [cnt+1]
+#    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : [cnt+1]
+    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : cnt+1
     cnt    += len
     return key,cnt
 end
@@ -278,7 +279,11 @@ end
 macro espy_record(out,key,var)
     return esc(quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
-            $out[$key.$var] .= $var                                              # out[key.x] = x
+            if typeof($key.$var) == Int64
+                $out[$key.$var] = $var                                              # out[key.x] = x
+            else
+                $out[$key.$var] .= $var                                              # out[key.x] = x
+            end
         end
     end)
 end
