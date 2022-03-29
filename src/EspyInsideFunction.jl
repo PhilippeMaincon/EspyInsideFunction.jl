@@ -297,7 +297,7 @@ macro espy_call(out,key,f)                                                      
         haskey($key,$(QuoteNode(foo))) ? $fp : $f                               # haskey(key,:foo) ? foo(out,key.foo,args) : foo(args)
     end)
 end
-## Espy
+## @espy
 function newinput(ex,newargs...)
     if isexpr(:call,ex)                                                         # f(x)
         exo = makecall(ex.args[1],newargs...,ex.args[2:end]...)                 # f(newargs...,x)
