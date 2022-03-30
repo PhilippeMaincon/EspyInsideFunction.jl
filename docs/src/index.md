@@ -3,6 +3,7 @@
 **EspyInsideFunction.jl** provides functionality to extract internal variables from a function.
 "Internal" refers here to variables that are neither parameters nor outputs of the function.
 
+
 The need for EspyInsideFunction arises when there is a difference between
 - What the rest of the software needs to exchange with the function, in order to
   carry out the software's task.
