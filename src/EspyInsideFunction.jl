@@ -166,6 +166,7 @@ namedtuple(sym::Symbol,val) = (;zip((sym,),(val,))...)
 isloopreq(ele) = isdot(ele) && isref(getleft(ele))
 iscallreq(ele) = isdot(ele) && ~isref(getleft(ele))
 function makekey_tuple(cnt,ex,reqabl) # ex=(a,gp[].(...),foo.(...))   reqabl=(a=[...],gp=forloop(ngp,(...)),foo=(...))
+    if ex == () return NamedTuple(),0 end
     if  isquote(ex) ex = maketuple(ex.value) end # allow user to type a.b for (a.(b,),)
     if ~istuple(ex) ex = maketuple(ex)       end
     len   = length(ex.args)
@@ -192,7 +193,6 @@ end
 function makekey_symbol(cnt,siz) # ex=:a  reqabl=[...]
     len     = prod(siz)
     ndim    = length(siz)
-#    key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : [cnt+1]
     key     = ndim>0 ? collect(reshape(cnt+1:cnt+len,siz)) : cnt+1
     cnt    += len
     return key,cnt
