@@ -3,14 +3,15 @@ uuid = "2b54c6b0-5ccd-11ec-2d73-45d62642ee81"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
 version = "0.1.2"
 
-[compat]
-julia = "1.6"
-
 [deps]
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
+[compat]
+julia = "1.6"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [targets]
 test = ["Test"]
