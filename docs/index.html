@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>EspyInsideFunction.jl · EspyInsideFunction.jl</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="index.html">EspyInsideFunction.jl</a></span></div><form class="docs-search" action="search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href="index.html">EspyInsideFunction.jl</a><ul class="internal"><li><a class="tocitem" href="#Package-features"><span>Package features</span></a></li><li><a class="tocitem" href="#code-markup"><span>Code markup</span></a></li><li><a class="tocitem" href="#requestable"><span>Requestable variables</span></a></li><li><a class="tocitem" href="#creating-a-request"><span>Creating a request</span></a></li><li><a class="tocitem" href="#makekey"><span>Output access key</span></a></li><li><a class="tocitem" href="#Obtaining-and-accessing-the-outputs"><span>Obtaining and accessing the outputs</span></a></li><li><a class="tocitem" href="#Which-variables-types-can-be-exported-in-this-way?"><span>Which variables types can be exported in this way?</span></a></li><li class="toplevel"><a class="tocitem" href="#Reference"><span>Reference</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href="index.html">EspyInsideFunction.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="index.html">EspyInsideFunction.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="EspyInsideFunction.jl"><a class="docs-heading-anchor" href="#EspyInsideFunction.jl">EspyInsideFunction.jl</a><a id="EspyInsideFunction.jl-1"></a><a class="docs-heading-anchor-permalink" href="#EspyInsideFunction.jl" title="Permalink"></a></h1><p><em>Package for the extraction of internal variables from a function.</em></p><h2 id="Package-features"><a class="docs-heading-anchor" href="#Package-features">Package features</a><a id="Package-features-1"></a><a class="docs-heading-anchor-permalink" href="#Package-features" title="Permalink"></a></h2><p><strong>EspyInsideFunction.jl</strong> provides functionality to extract internal variables from a function. &quot;Internal&quot; refers here to variables that are neither parameters nor outputs of the function.</p><p>The need for <code>EspyInsideFunction</code> arises when there is a difference between</p><ul><li>what the rest of the software needs to exchange with the function, in order to carry out the software&#39;s task, and</li><li>what the user may want to know about intermediate results internal to the function.</li></ul><p>An example is the extraction of results in a finite element software. The code for an element type must include a function that takes in the degrees of freedom (in mechanics: nodel displacements) and output the element&#39;s contributions to the residuals (forces). The user is interested in intermediate results such as stresses and strains.</p><p>Writing the function to explicitly export intermediate results clutters the element code, the element API, and the rest of the software.</p><p><code>EspyInsideFunction</code>&#39;s approach to this problem is to use metaprogramming to generate two versions of the function&#39;s code</p><ol><li>The fast version, that does nothing to save or export internediate results.  This is then used in e.g. the finite element solution process.</li><li>The exporting version.  In it receives additional parameters<ul><li>a vector <code>out</code>, to be filled with the requested results.</li><li>a <code>key</code> describing which internal results are wanted and where in <code>out</code> to store which result.</li></ul>Typicaly, this version of the code is called once the computations have been completed (using the fast version), to extract the requested results.</li></ol><p>A complete example can be found in <a href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/test/EspyDemo.jl"><code>EspyDemo.jl</code></a></p><h2 id="code-markup"><a class="docs-heading-anchor" href="#code-markup">Code markup</a><a id="code-markup-1"></a><a class="docs-heading-anchor-permalink" href="#code-markup" title="Permalink"></a></h2><p>The following is an example of annotated code</p><pre><code class="language-julia hljs">using EspyInsideFunction
+struct Material
+    E   :: Float64 
+end
+@espy function material(m::Material,ε)
+    :σ = m.E*ε
+    return σ
+end
+requestable(m::Material) = (σ=scalar,)
+
+
+struct Element  
+    L₀  :: Float64  
+    A   :: Float64  
+    ρg  :: Float64  
+    mat :: Material 
+end
+
+const ngp = 1 
+
+@espy function force(e::Element,ΔX)
+    :w      = e.ρg*e.A*e.L₀
+    :R      = [w/2,w/2]
+    for igp = 1:ngp 
+        :ε  = (ΔX[2]-ΔX[1])/e.L₀
+        σ   = :material(e.mat,ε)  
+        :T  = e.A*σ
+        R   = +[T,-T]
+    end
+    return R
+end
+requestable(e::Element) = (w=scalar, R=(2,), gp= 
+       forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat) )))
+
+# output
+requestable (generic function with 2 methods)</code></pre><p>The code of each function is prepended with <code>@espy</code>.  The name of variables of interest is annotated with a <code>:</code> ( for example <code>:ε</code> and <code>:σ</code>). These variable names must appear on the left of an assignment, and can not be expressions that would otherwise be acceptable at the left of an assigment (writing <code>:a[igp] = ...</code> or <code>:a.b</code>will not work). Calls to sub-functions which are themselves annotated with @espy must be annotated with a <code>:</code> (as in <code>σ   = :material(e.mat,ε)</code>).</p><p>The last line of code (<code>requestable</code>) provides the obtainable intermediate results and their sizes.  See Section <a href="index.html#requestable">Requestable</a> for more details.</p><p>The macro <code>@espy</code> generates two versions of the code: first a clean code (for example)</p><pre><code class="language-julia hljs">function material(m::Material,ε)
+    σ = m.E*ε
+    return σ
+end</code></pre><p>and second, a version of the code to be used for result extraction.  Its interface is</p><pre><code class="language-julia hljs">function material(out,key,m::Material,εz)
+    ...
+end</code></pre><p>The variables <code>out</code> and <code>key</code> are discussed in the following.</p><p>One can replace the <code>@espy</code> annotation with <code>@espydbg</code> to examine the code that is generated:</p><pre><code class="language-julia hljs">@espydbg function material(m::Material,ε)
+    ...
+end</code></pre><p>The generated code itself contains macros.  To see the final code, one can type</p><pre><code class="language-julia hljs">@macroexpand @espy function material(m::Material,ε)
+    ...
+end</code></pre><h2 id="requestable"><a class="docs-heading-anchor" href="#requestable">Requestable variables</a><a id="requestable-1"></a><a class="docs-heading-anchor-permalink" href="#requestable" title="Permalink"></a></h2><p>The programmer of the annotated function must provide a description of the requestable variables and their size, as well as loops with their length, and sub-functions.  </p><pre><code class="language-julia hljs">requestable_from_element_ = (w=scalar, R=(2,), 
+          gp=forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat)) ) )</code></pre><p>In at last code line of the code example in Section <a href="index.html#code-markup">Code markup</a>, this is done as</p><pre><code class="language-julia hljs">requestable(e::Element) = (w=scalar, R=(2,), 
+          gp=forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat)) ) )</code></pre><p>the choice being made made to provide this as a method associated to <code>Element</code>.</p><p><code>forloop</code> and <code>scalar</code> are respectively a constructor and a constant exported by <code>EspyInsideFunction.jl</code>. The line will be interpreted by the function <code>makekey</code> (Section <a href="index.html#makekey">Output access key</a>) as stating that within the body of the espied function (here <code>residual</code>), there is a loop exactly of the form</p><pre><code class="language-julia hljs">for igp = 1:ngp</code></pre><p>where the letters <code>gp</code> refer to the expression <code>gp=forloop(...)</code>. The currect version of <code>EspyInsideFunction.jl</code> is not flexible on this point: it must be a <code>for</code> loop (not a <code>while</code> loop or comprehension), the index variable must be <code>igp</code> (<code>gp</code> from <code>gp=forloop(...)</code> perfixed by <code>i</code>), and the upper bound must be <code>ngp</code>.</p><p>Where some of the variables are arrays, their size must be described, using <code>Tuples</code>:</p><pre><code class="language-julia hljs">using EspyInsideFunction
+
+ndof        = 16
+nx          = 2
+ngp         = 4
+requestable = (X=(ndof),gp=forloop(ngp,(F=(nx,nx),material=(σ=(nx,nx),ε=(nx,nx)))))
+# output
+(X = 16, gp = forloop(4, (F = (2, 2), material = (σ = (2, 2), ε = (2, 2)))))</code></pre><p>A development aim is to make it unnecessary to provide a list of requestable variable.  Until then, one should be meticulous in writing these lists, as any mistake leads to error message that are difficult to interpret. A drawback is that this will require requestable variables to have a size that is part of the type.</p><h2 id="creating-a-request"><a class="docs-heading-anchor" href="#creating-a-request">Creating a request</a><a id="creating-a-request-1"></a><a class="docs-heading-anchor-permalink" href="#creating-a-request" title="Permalink"></a></h2><p>In order to extract results from a function annotated with <code>@espy</code> and <code>:</code>, the <em>user</em> of the function needs to define a <em>request</em>.  For example</p><pre><code class="language-julia hljs">request   = @request w,gp[].(ε,material.(σ))
+
+# output
+:((w, (gp[]).(ε, material.(σ))))</code></pre><p>For the above request to be valid, the espied function (<code>force</code>, Section <a href="index.html#code-markup">Code markup</a>) must contain a variable <code>w</code> outside of any loop.  In the function there is a <code>for</code>-loop over variable <code>igp</code> taking values from <code>1</code> to <code>ngp</code>.  Within this loop, variable <code>ε</code> must appear (and be annotated, and defined as <code>requestable</code>).  Within the same loop, a function <code>material</code> must be called (and be annotated).  Within this function, <code>material</code>, variable <code>σ</code> must appear and be annotated, and defined as <code>requestable</code>.</p><h2 id="makekey"><a class="docs-heading-anchor" href="#makekey">Output access key</a><a id="makekey-1"></a><a class="docs-heading-anchor-permalink" href="#makekey" title="Permalink"></a></h2><p>An espy-key is a data structure containing indices into the <code>out</code> vector.  It is generated using <code>makekey</code> which takes as inputs</p><ol><li>A request (Section <a href="index.html#creating-a-request">Creating a request</a>)</li><li>A description of the requestable variables (Section <a href="index.html#requestable">Requestable variables</a>)</li></ol><p>In the example provided in Section <a href="index.html#code-markup">Code markup</a>, methods <code>force</code> and <code>requestable</code> are associated to the  type <code>Element</code>, so in this example we need to create an <code>Element</code> variable. </p><pre><code class="language-julia hljs">m          = Material(2.1e11)
+e          = Element(1.,1e-4,8000*9.81,m)
+key,nkey   = makekey(request,requestable(e))
+
+# output
+((w = 1, gp = NamedTuple{(:ε, :material), Tuple{Int64, NamedTuple{(:σ,), Tuple{Int64}}}}[(ε = 2, material = (σ = 3,))]), 3)
+</code></pre><p>This produces <code>key</code> such that</p><pre><code class="language-julia hljs">key.w                == 1 
+key.gp[1].ε          == 2   
+key.gp[1].material.σ == 3            
+# output
+true</code></pre><p>and</p><pre><code class="language-julia hljs">nkey == 3               
+# output
+true</code></pre><p>where <code>nkey</code> is the largest index found in <code>key</code>.</p><p>If requestable variables are themselves arrays, <code>key</code> will contain arrays of indices:</p><pre><code class="language-julia hljs">using EspyInsideFunction
+ngp         = 8
+requestable = (gp=forloop(ngp,(material=(σ=(2,2),),)),)
+request     = @request gp[].(material.(σ,),)
+key,nkey    = makekey(request,requestable)
+# Output
+key.gp[8].material.σ == [29 31;30 32]</code></pre><h2 id="Obtaining-and-accessing-the-outputs"><a class="docs-heading-anchor" href="#Obtaining-and-accessing-the-outputs">Obtaining and accessing the outputs</a><a id="Obtaining-and-accessing-the-outputs-1"></a><a class="docs-heading-anchor-permalink" href="#Obtaining-and-accessing-the-outputs" title="Permalink"></a></h2><p>The following example shows how the user of an espy-annotated function can obtain and access the <code>out</code> variable. Continuing with the example from Section <a href="index.html#code-markup">Code markup</a>, we assume that we have the results <code>ΔX</code> for which we want to extract intermediate results.  Typicaly <code>ΔX</code> has been obtained in a numerical procedure that made use of the fast code generated from the annotated code.  For a simple example:</p><pre><code class="language-julia hljs">nel  = 10
+elementconnectivity = [[i,i+1] for i = 1:nel]
+ΔX   = [1/2*e.ρg/m.E*((iel*e.L₀)^2-(nel*e.L₀)^2) for iel = 0:nel]
+
+iel  = 4
+igp  = 1
+# output
+1</code></pre><p>In this case, the code extracts and agregates results from multiple calls to <code>force</code>:</p><pre><code class="language-julia hljs">out = Matrix{Float64}(undef,nkey,nel)
+for (iel,ec) ∈ enumerate(elementconnectivity)
+    _ = force(@view(out[:,iel]),key, e,ΔX[ec])
+end
+
+σ = out[key.gp[igp].material.σ,iel]
+ε = out[key.gp[igp].ε         ,iel] 
+
+# output
+1.3080000000000017e-6</code></pre><p><code>nkey</code> (obtained from <code>makekey</code>) is used to allocate <code>out</code>. <code>out</code> and <code>key</code> are passed to the spying version of <code>force</code>. In this example where results are agregated to multiple calls to <code>force</code>, care must be taken not to pass <code>out[:,iel]</code>, but <code>@view(out[:,iel])</code> so that <code>force</code> can modify the content of the slice. </p><p>In the two last lines of the code, <code>key</code> is used to access specific outputs. </p><h2 id="Which-variables-types-can-be-exported-in-this-way?"><a class="docs-heading-anchor" href="#Which-variables-types-can-be-exported-in-this-way?">Which variables types can be exported in this way?</a><a id="Which-variables-types-can-be-exported-in-this-way?-1"></a><a class="docs-heading-anchor-permalink" href="#Which-variables-types-can-be-exported-in-this-way?" title="Permalink"></a></h2><p><code>EspyInsideFunction</code> is made to store all results from a function inside a single array (e.g. <code>out</code>).  This allows to agregate large amounts of data, often produced in multiple calls to the same function, with only a single allocation.  </p><p>If <code>var</code> is a scalar, the code inserted by <code>@espy</code> to capture an intermediate result is of the form <code>out[key.var] = var</code>, so <code>var</code> must convert to the <code>eltype</code> of <code>out</code>. </p><p>If <code>var</code> is a container, <code>key.var</code> is an array of integers, and the inserted code is <code>out[key.var] .= var</code>.  This assigment works for array-like containers, including <code>Array</code>, <code>StaticArray</code> and <code>ntuple</code>. A normal <code>Array</code> can be used, but its size must be defined as a constant, in <code>requestable</code>.</p><h1 id="Reference"><a class="docs-heading-anchor" href="#Reference">Reference</a><a id="Reference-1"></a><a class="docs-heading-anchor-permalink" href="#Reference" title="Permalink"></a></h1><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.@request" href="#EspyInsideFunction.@request"><code>EspyInsideFunction.@request</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia hljs">req = @request expr</code></pre><p>Create a request of internal results wanted from a function. Considering the function presented as example for <a href="index.html#EspyInsideFunction.@espy"><code>@espy</code></a>, examples of possible syntax include</p><pre><code class="nohighlight hljs">req       = @request gp[].(s,z,material.(a,b))
+req       = @request gp[].(s)
+req       = @request gp[].(material.(a))</code></pre><p>The first expression can be read as follows: &quot;In the function, there is a <code>for</code> loop over variable <code>igp</code>, and the ressults are wanted as a vector (one element for each cycle of the loop).  Each element of the vector shall be a <code>type</code> (a structure) with a field <code>material</code>, because a function of that name is called in the for loop.  Within that function, a variable <code>a</code> is to be retrived.</p><p>Note the need to use parentheses also for single-element lists, as in <code>(s)</code>.</p><p>See also: <a href="index.html#EspyInsideFunction.@espy"><code>@espy</code></a>, <a href="index.html#EspyInsideFunction.@espydbg"><code>@espydbg</code></a>, <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L240-L259">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.makekey" href="#EspyInsideFunction.makekey"><code>EspyInsideFunction.makekey</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">key = makekey(requested,requestable)</code></pre><p>Create a &quot;key&quot; i.e. a data structure of indices into an array <code>out</code> of internal results, returned by the code generated by <code>@espy</code>.</p><p>Inputs are</p><ul><li><code>requested</code> a data structure defining a request. This input is provided  by the user of the code to specify what results are to be extracted.</li><li><code>requestable</code> a named tuple defining the names and sizes of intermediate results  that can be requested from a given function: this input is provided</li></ul><p><strong>Example</strong></p><pre><code class="nohighlight hljs">requestable  = (gp=forloop(2, (z=scalar,s=scalar, material=(a=scalar,b=scalar))),)
+requested    = @request gp[].(s,z,material.(a,b))
+key,nkey     = makekey(requested,requestable)</code></pre><p>returns <code>key</code> such that</p><pre><code class="nohighlight hljs">key.gp[1] == (s=1, z=2, material = (a=3, b=4))
+key.gp[2] == (s=5, z=6, material = (a=7, b=8))
+key.gp[2].material.a == 7
+nkey      == 8</code></pre><p>See also: <a href="index.html#EspyInsideFunction.@espy"><code>@espy</code></a>, <a href="index.html#EspyInsideFunction.@espydbg"><code>@espydbg</code></a>, <a href="index.html#EspyInsideFunction.@request"><code>@request</code></a>, <a href="index.html#EspyInsideFunction.forloop"><code>forloop</code></a>, <a href="index.html#EspyInsideFunction.scalar"><code>scalar</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L212-L238">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.@espy" href="#EspyInsideFunction.@espy"><code>EspyInsideFunction.@espy</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia hljs">@espy function residual(x,y)
+    ngp=2
+    r = 0
+    for igp=1:ngp
+        :z = x[igp]+y[igp]
+        :s,dum  = :material(z)
+        r += s
+    end
+    return r
+end
+@espy function material(z)
+    :a = z+1
+    :b = a*z
+    return b,3.
+end</code></pre><p>Transform the code of a function in which variables and function calls have been annotated with <code>:</code> in order to allow the extraction of intermediate results.</p><p>The above annotated code will result in the generation of &quot;clean&quot; code in which the <code>:</code> annotations have been taken out</p><pre><code class="nohighlight hljs">function residual(x,y)
+    ngp=2
+    r = 0
+    for igp=1:ngp
+        z = x[igp]+y[igp]
+        s,dum  = material(z)
+        r += s
+    end
+    return r
+end
+function material(z)
+    a = z+1
+    b = a*z
+    return b,3.
+end</code></pre><p>The macro will also generate code with additional <code>out</code> and <code>key</code> arguments:</p><pre><code class="nohighlight hljs">function residual(out,key,x,y)
+    ngp = 2
+    r   = 0
+    for igp = 1:ngp
+        @espy_loop key gp                     # key_gp = key.gp[igp]
+        z = x[igp]+y[igp]
+        @espy_record out key_gp z             # out[key_gp.z] = z
+        s = @espy_call out key_gp material(z) # s = material(out,key_gp.material,z)
+        @espy_record out key_gp s             # out[key_gp.s] = s
+        r += s
+    end
+    return r
+end
+function material(out,key,z)
+    a = z+1
+    @espy_record out key a                    # out[key.a] = a
+    b = a*z
+    @espy_record out key b                    # out[key.b] = b
+    return b
+end</code></pre><p>The above code contains more macros, which in turn evaluate as shown in the comments.  More precisely,</p><pre><code class="nohighlight hljs">@espy_record out key a</code></pre><p>evaluates to</p><pre><code class="nohighlight hljs">if haskey(key,a)
+    out[key.a] = a
+end</code></pre><p><code>key</code> is a datastructure generated by <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a> based on a <a href="index.html#EspyInsideFunction.@request"><code>@request</code></a>.</p><p>When the version of <code>residual</code> with additional parameter <code>out</code> has been called, the content of this output is accessed using <code>key</code>:</p><pre><code class="nohighlight hljs">requestable  = (gp=forloop(2, (z=scalar,s=scalar, material=(a=scalar,b=scalar))),)
+requested    = @request gp[].(s,z,material.(a,b))
+key,nkey     = makekey(requested,requestable)
+residual(out,key,x,y)
+igp          = 2
+z            = out[key.gp[igp].z]</code></pre><p>See also: <a href="index.html#EspyInsideFunction.@espydbg"><code>@espydbg</code></a>, <a href="index.html#EspyInsideFunction.@request"><code>@request</code></a>, <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L365-L452">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.@espydbg" href="#EspyInsideFunction.@espydbg"><code>EspyInsideFunction.@espydbg</code></a> — <span class="docstring-category">Macro</span></header><section><div><pre><code class="language-julia hljs">@espydbg function ...
+end</code></pre><p>Run <a href="index.html#EspyInsideFunction.@espy"><code>@espy</code></a> and to generate code and print the output code (for debug purposes).</p><p>See also: <a href="index.html#EspyInsideFunction.@espy"><code>@espy</code></a>, <a href="index.html#EspyInsideFunction.@request"><code>@request</code></a>, <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a>, <a href="index.html#EspyInsideFunction.forloop"><code>forloop</code></a>, <a href="index.html#EspyInsideFunction.scalar"><code>scalar</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L458-L464">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.forloop" href="#EspyInsideFunction.forloop"><code>EspyInsideFunction.forloop</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">forloop</code></pre><p>Component to build the <code>requestable</code> input to <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a> See also: <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a>, <a href="index.html#EspyInsideFunction.scalar"><code>scalar</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L123-L129">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="EspyInsideFunction.scalar" href="#EspyInsideFunction.scalar"><code>EspyInsideFunction.scalar</code></a> — <span class="docstring-category">Constant</span></header><section><div><pre><code class="language-julia hljs">scalar</code></pre><p>Component to build the <code>requestable</code> input to <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a> See also: <a href="index.html#EspyInsideFunction.makekey"><code>makekey</code></a>, <a href="index.html#EspyInsideFunction.forloop"><code>forloop</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/77d31bc29411768ee7fb33a64955237040222b52/src/EspyInsideFunction.jl#L134-L140">source</a></section></article></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.15 on <span class="colophon-date" title="Friday 27 May 2022 12:55">Friday 27 May 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
