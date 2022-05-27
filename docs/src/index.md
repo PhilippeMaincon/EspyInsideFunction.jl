@@ -1,104 +1,137 @@
-# EspyInsideFunction.jl: result extraction
-## What does EspyInsideFunction do?
+# EspyInsideFunction.jl
+## Package for the extraction of internal variables from a function
 **EspyInsideFunction.jl** provides functionality to extract internal variables from a function.
 "Internal" refers here to variables that are neither parameters nor outputs of the function.
 
+The need for `EspyInsideFunction` arises when there is a difference between
 
-The need for EspyInsideFunction arises when there is a difference between
-- What the rest of the software needs to exchange with the function, in order to
-  carry out the software's task.
-and
-- What the user may want to know about intermediate results internal to the function.
+- what the rest of the software needs to exchange with the function, in order to
+  carry out the software's task, and
+- what the user may want to know about intermediate results internal to the function.
 
-An example (and the original motivation for this package) is the extraction of results in
+An example is the extraction of results in
 a finite element software. The code for an element type must include a function that takes in
-the degrees of freedom (let us say, nodal displacements, in mechanics) and output the element's
-contributions to the residuals (forces). A central motivation for the finite element
-analysis could be to obtain intermediate results (stresses, strains).
+the degrees of freedom (in mechanics: nodel displacements) and output the element's
+contributions to the residuals (forces). The user is interested in intermediate results such as stresses and strains.
 
 Writing the function to explicitly export intermediate results clutters the element code, the element API, and the rest of the software.
 
-EspyInsideFunction's approach to this problem is to use metaprogramming to generate two versions of the
+`EspyInsideFunction`'s approach to this problem is to use metaprogramming to generate two versions of the
 function's code
+
 1. The fast version, that does nothing to save or export internediate results.  This is then
    used in e.g. the finite element solution process.
 2. The exporting version.  In it receives additional parameters
-   - a `request`, which specifies which internal results are wanted.
    - a vector `out`, to be filled with the requested results.
-   - a `key` describing where in `out` to store which result.
-   Typicaly, this version of the code is called once the computations have been completed, to extract
+   - a `key` describing which internal results are wanted and where in `out` to store which result.
+   Typicaly, this version of the code is called once the computations have been completed (using the fast version), to extract
    the requested results.
 
-## Code markup {#code-markup}
-The following is an example of annotated code
-```julia
-using EspyInsideFunction
-const ngp=2
-@espy function residual(x,y)
-    r = 0
-    for igp=1:ngp
-      :z = x[igp]+y[igp]
-      :s  = :material(z)
-      r += s
-    end
-    return r
-end
-@espy function material(z)
-    :a = z+1
-    :b = a*z
-    return b
-end
-requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)
-```
-The code of each function is prepended with `@espy`.  The name of variables of interest is annotated with a `:` (`:z`,`:s` and so forth). These variable names
-must appear on the left hand side of an equation, and can not be array references (writing `:a[igp] = ...` will not work). Call to functions which may contain variables of interest must be annotated with a `:` (as in `:s  = :material(z)`).
+A complete example can be found in [`EspyDemo.jl`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/test/EspyDemo.jl)
 
-The last line of code creates a variable `requestable`, which lists the variables of interest and their sizes.  See Section [Requestable]{#requestable} for more details.
+## [Code markup](@id code-markup)
+
+The following is an example of annotated code
+
+```jldoctest EspyDemo; output = false
+using EspyInsideFunction
+struct Material
+    E   :: Float64 
+end
+@espy function material(m::Material,ε)
+    :σ = m.E*ε
+    return σ
+end
+requestable(m::Material) = (σ=scalar,)
+
+
+struct Element  
+    L₀  :: Float64  
+    A   :: Float64  
+    ρg  :: Float64  
+    mat :: Material 
+end
+
+const ngp = 1 
+
+@espy function force(e::Element,ΔX)
+    :w      = e.ρg*e.A*e.L₀
+    :R      = [w/2,w/2]
+    for igp = 1:ngp 
+        :ε  = (ΔX[2]-ΔX[1])/e.L₀
+        σ   = :material(e.mat,ε)  
+        :T  = e.A*σ
+        R   = +[T,-T]
+    end
+    return R
+end
+requestable(e::Element) = (w=scalar, R=(2,), gp= 
+       forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat) )))
+
+# output
+requestable (generic function with 2 methods)
+```
+
+The code of each function is prepended with `@espy`.  The name of variables of interest is annotated with a `:` (`:ε`,`:σ` and so forth). These variable names
+must appear on the left hand side of an equation, and can not be array references (writing `:a[igp] = ...` will not work). Call to functions which may contain variables of interest must be annotated with a `:` (as in `σ   = :material(e.mat,ε)`).
+
+The last line of code (`requestable`) provides the obtainable intermediate results and their sizes.  See Section [Requestable](@ref requestable) for more details.
 
 The macro `@espy` generates two versions of the code: first a clean code (for example)
+
 ```julia
-function material(z)
-    a = z+1
-    b = a*z
-    return b
+function material(m::Material,ε)
+    σ = m.E*ε
+    return σ
 end
 ```
-and second, a version of the code to be used for result extraction.  The function headers will look like:
+
+and second, a version of the code to be used for result extraction.  Its interface is
+
 ```julia
-function material(out,req,z)
+function material(out,req,m::Material,εz)
     ...
 end
 ```
+
 The variables `out` (for output) and `req` (for request) are discussed in the following.
 
-One can modify the code annotation to examine the code that is generated:
+One can replace the `@espy` annotation with `@espydbg` to examine the code that is generated:
+
 ```julia
-@espydbg function material(z)
+@espydbg function material(m::Material,ε)
     ...
 end
 ```
+
 The generated code itself contains macros.  To see the final code, one can type
+
 ```julia
-@macroexpand @espy function material(z)
+@macroexpand @espy function material(m::Material,ε)
     ...
 end
 ```
 
-## Requestable variables {#requestable}
+## [Requestable variables](@id requestable)
 
-The *programmer* of the annotated function must provide a description of the requestable variables
-and their size, as well as loops with their length, and sub-functions.
+The programmer of the annotated function must provide a description of the requestable variables
+and their size, as well as loops with their length, and sub-functions.  
 
-The last code line in the code example in Section [Code markup]{#code-markup} is
+In at last code line of the code example in Section [Code markup](@ref code-markup),
 
 ```julia
-requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)
+requestable(e::Element) = (w=scalar, R=(2,), 
+          gp=forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat)) ) )
 ```
 
-where `forloop` and `scalar` are respectively a constructor and a constant exported by `EspyInsideFunction.jl`. The line will be interpreted by the function `makekey` (Section [Output access key]{#makekey}) as stating that within the body of the espied function (here `residual`), there is a loop exactly of the form
+the choice is made to provide this as a method associated to `Element`.
+
+`forloop` and `scalar` are respectively a constructor and a constant exported by `EspyInsideFunction.jl`. The line will be interpreted by the function `makekey` (Section [Output access key](@ref makekey)) as stating that within the body of the espied function (here `residual`), there is a loop exactly of the form
+
 ```julia
 for igp = 1:ngp
 ```
+
 where `gp` is from the expression `gp=forloop(...`.  `EspyInsideFunction.jl` is not flexible on this point and requires a `for` loop, not a `while` loop or comprehension.
 
 Where some of the variables are arrays, their size must be described:
@@ -111,20 +144,24 @@ nx          = 2
 ngp         = 4
 requestable = (X=(ndof),gp=forloop(ngp,(F=(nx,nx),material=(σ=(nx,nx),ε=(nx,nx)))))
 # output
-(X=(16),gp=forloop(4,(F=(2,2),material=(σ=(2,2),ε=(2,2)))))
+(X = 16, gp = forloop(4, (F = (2, 2), material = (σ = (2, 2), ε = (2, 2)))))
 ```
 
 A development aim is to make it unnecessary to provide a list of requestable variable.  Until then, one should be meticulous in writing this, as any mistake leads to error message that are difficult to interpret.
 
-## Which variables can be exported in this way?
+## Which variables types can be exported in this way?
 `EspyInsideFunction` is made to store all results from a function inside a single array (e.g. `out`).  This allows to agregate large amounts of data with only a single allocation.  The code inserted by `@espy` to capture an intermediate result is of the form
+
 ```julia
 out[key.var] .= var
 ```
+
 if the variable of interest `var` is an `Array`, of `FLoat64`and
+
 ```julia
 out[key.var] = var
 ```
+
 if `var` is a `Float64`.  `key.var` is an integer or an array of integers (generated by `makekey`). The user has allocated `out`, typicaly as an array of `Float64`. For `EspyInsideFunction` to work Julia must be able to map `var` onto a full array, and to convert the elements of `var`, to `Float64`.
 
 This works, for example, with `var` being a `Float64`, a `StaticArray` or an `ntuple`.
@@ -133,19 +170,17 @@ This works, for example, with `var` being a `Float64`, a `StaticArray` or an `nt
 
 In order to extract results from a function annotated with `@espy` and `:`, the *user* of the function needs to define
 a *request*.  For example
-```julia
-req = @request gp[].(s,z,material.(a,b))
+
+```jldoctest EspyDemo; output = false
+request   = @request w,gp[].(ε,material.(σ))
+
+# output
+:((w, (gp[]).(ε, material.(σ))))
 ```
 
-This request is based on the assumption that in the relevant function (`residual`), there is a `for`-loop over variable `igp` taking values from `1` to `ngp`.  Within this loop, variables `s` and `z` must appear (and be annotated).  Within the same loop, a function `material` must be called (and be annotated).  Within this function, `material`, variables `a` and `b` must appear and be annotated.
+The espied function must contain a variable `w` outside of any loop.  This request is based on the assumption that in the relevant function (`force`), there is a `for`-loop over variable `igp` taking values from `1` to `ngp`.  Within this loop, variable `ε` must appear (and be annotated, and defined as `requestable`).  Within the same loop, a function `material` must be called (and be annotated).  Within this function, `material`, variable `σ` must appear and be annotated, and defined as `requestable`.
 
-A slightly more complex example (not valid with the above code) is
-```julia
-req = @request X,gp[].(F,material.(σ,ε))
-```
-The espied function must contain a variable `X` outside of any loop.  It must contain a `for`-loop within which a variable `F` will appear, as well as a call to the function `material` within which variables `σ` and `ε` appear.
-
-## Output access key {#makekey}
+## [Output access key](@id makekey)
 
 An espy-key is a data structure with a shape as described in `@request`, containing indices into the `out` vector
 returned by the code generated by `@espy`.
@@ -155,74 +190,92 @@ Generating this requires
 1. A request
 2. A description of the requestable variables
 
-```julia
-using EspyInsideFunction
-ngp         = 2
-requestable = (gp=forloop(ngp,(z=scalar,s=scalar,material=(a=scalar,b=scalar))),)
-request     = @request gp[].(s,z,material.(a,b))
-key,nkey    = makekey(request,requestable)
+For the later, because the developper of `Element` decided to associate methods `force` and `requestable` to the type `Element`, we need to create an `Element` variable. 
+
+```jldoctest EspyDemo; output = false
+m          = Material(2.1e11)
+e          = Element(1.,1e-4,8000*9.81,m)
+key,nkey   = makekey(request,requestable(e))
+
+# output
+((w = 1, gp = NamedTuple{(:ε, :material), Tuple{Int64, NamedTuple{(:σ,), Tuple{Int64}}}}[(ε = 2, material = (σ = 3,))]), 3)
+
 ```
 
-This generates `key`, such that in this case
+This produces `key` such that
 
-```julia
-key.gp[1].s          == 1
-key.gp[1].z          == 2
-key.gp[1].material.a == 3
-key.gp[1].material.b == 4
-key.gp[2].s          == 5
-key.gp[2].z          == 6
-key.gp[2].material.a == 7
-key.gp[2].material.b == 8
+```jldoctest EspyDemo
+key.w                
+# output
+1
 ```
 
-`nkey` is the highest index that appears in `key` (the length of the vector `out`).  In this example
-`nkey==8`.
+```jldoctest EspyDemo
+key.gp[1].ε                
+# output
+2
+```
 
-Where requestable variables are themselves array, the key will contain arrays of indices:
+```jldoctest EspyDemo
+key.gp[1].material.σ                
+# output
+3
+```
+
+and
+
+```jldoctest EspyDemo
+nkey                
+# output
+3
+```
+
+where `nkey` is the largest index found in `key`.
+
+If requestable variables are themselves array, `key` will contain arrays of indices:
 ```julia
 using EspyInsideFunction
 ngp         = 8
 requestable = (gp=forloop(ngp,(material=(σ=(2,2),),)),)
 request     = @request gp[].(material.(σ,),)
 key,nkey    = makekey(request,requestable)
-
+# Output
 key.gp[8].material.σ == [29 31;30 32]
 ```
 
 ## Obtaining and accessing the outputs
 
-The following example shows how the user of an espy-annotated function can obtain and access the `out` variable.  The example is to be executed after the first code example in Section [Code markup]{#code-markup}.
+The following example shows how the user of an espy-annotated function can obtain and access the `out` variable. Assuming that
+we have the results `ΔX`for which we want to extract intermediate results
 
-```julia
-x,y      = [1.,2.],[3.,4.]
-req      = @request gp[].(s,z,material.(a,b))
-key,nkey = makekey(req,requestable)
-out      = Vector(undef,nkey)
-r        = residual(out,key,x,y)
-a        = out[key.gp[1].material.a]
-s        = out[key.gp[1].s         ]
+
+```jldoctest EspyDemo; output = false
+nel  = 10
+topo = [[i,i+1] for i = 1:nel]
+ΔX   = [1/2*e.ρg/m.E*((iel*e.L₀)^2-(nel*e.L₀)^2) for iel = 0:nel]
+1+1
+# output
+2
 ```
 
-The macro invoquation `@request` creates an expression describing the requested outputs.  The call to `makekey` creates the request key, as well as the number of values in the request. `nkey` is used to allocate an array for the outputs. The spying version of `residual`.  In lines the two last lines of the code, `key` is used to access specific outputs.
+then
 
-## Outputs from multiple calls
+```jldoctest EspyDemo; output = false
+out = Matrix{Float64}(undef,nkey,nel)
+for (iel,t) ∈ enumerate(topo)
+    _ = force(@view(out[:,iel]),key, e,ΔX[t])
+end
 
-Typicaly, a function like `residual` is called multiple times.  In a FEM setting, we could be interested in the values 'for each element' and 'for each time step'. Considering that all elements are of the same type (and thus that the dimensions `ndim`, `nnod` and `ngp` are the same for all elements), then `key` and `nkey` are the same for all elements. The code then becomes
+iel = 4
+igp = 1
+σ = out[key.gp[igp].material.σ,iel]
+ε = out[key.gp[igp].ε         ,iel] 
 
-```julia
-...
-using EspyInsideFunction
-ex        = @request gp[].(s,z,material.(a,b))
-key,nkey  = makekey(ex)
-out       = Vector(undef,nkey,nel,nstep)
-iel,istep = ...
-r         = residual(@view(out[:,iel,istep],key,x,y)
-a         = out[key.gp[1].material.a,iel,istep]
-s         = out[key.gp[1].s         ,iel,istep]
+# output
+1.3080000000000017e-6
 ```
 
-Thus, a large quantity of results can be stored in one large array, avoiding to clutter the memory-heap many smaller array.
+The macro invoquation `@request` creates an expression describing the requested outputs.  The call to `makekey` creates the request key, as well as the number of values in the request. `nkey` is used to allocate an array for the outputs. The spying version of `force`.  In the two last lines of the code, `key` is used to access specific outputs.
 
 # Reference
 ```@meta

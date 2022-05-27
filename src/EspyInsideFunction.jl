@@ -280,9 +280,9 @@ macro espy_record(out,key,var)
     return esc(quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
             if typeof($key.$var) == Int64
-                $out[$key.$var] = $var                                              # out[key.x] = x
+                $out[$key.$var] = $var                                          # out[key.x] = x
             else
-                $out[$key.$var] .= $var                                              # out[key.x] = x
+                $out[$key.$var] .= $var                                         # out[key.x] = x
             end
         end
     end)
@@ -319,47 +319,49 @@ function espy_(ex::Expr,out,key,trace=false)
         loopname = Symbol(string(var)[2:end])                                   # gp
         subkey   = Symbol(key,"_",loopname)                                     # key_gp
         body     = espy_(body,out,subkey,trace)                                 # recursion
-        loopmac  = makeespymacro(:espy_loop,key,loopname)                           # @espy_loop key gp → key_gp = key.gp[igp]
+        loopmac  = makeespymacro(:espy_loop,key,loopname)                       # @espy_loop key gp → key_gp = key.gp[igp]
         body.args = [loopmac,body.args...]                                      # prepend macro to body
         exo      = makefor(ex.args[1],body)                                     # rebuild the loop
     elseif isexpr(:(=),ex)
         trace && println("assign")
         right  = getright(ex)                                                   # rhs
-        if iscall(right)
-            foo    = getleft(right)                                             # foo, or :foo?
-            if isquote(foo)                                                     # ... = :foo(x,y,z)
-                right.args[1] = foo.value                                       # right: foo(x,y,z)
-                right = makeespymacro(:espy_call,out,key,right)                     # @espy_call out key foo(x,y,z)
+        left   = getleft(ex)                                                    # lhs
+        rec    = Vector{Expr}(undef,0)                                          # will contain the macros to insert
+        if iscall(right) 
+            foo             = getleft(right)                                    
+            if isquote(foo)                                                     # ... = foo, or ... = :foo?
+                right.args[1]   = foo.value                                     # right: foo(x,y,z)
+                right           = makeespymacro(:espy_call,out,key,right)       # ... = @espy_call out key foo(x,y,z)
             end
         end
-        left   = getleft(ex)                                                    # lhs
         if isexpr(:tuple,left)                                                  # (a,:b) = ...
-            rec     = Vector{Expr}(undef,0)                                     # will contain the macros to insert
-            newleft = Vector{Any }(undef,0)                                     # will contain (a,b)
-            for o ∈ left.args
+            args = left.args
+            left = ()                                                           # will contain (a,b)
+            for o ∈ args
                 if isquote(o)                                                   # ...,:b =
-                    push!(rec    ,makeespymacro(:espy_record,out,key,o.value))      # @espy_record out key b
-                    push!(newleft,o.value)                                      # (a,b)
+                    left = (left...,o.value)                                    # (a,b)
+                    push!(rec    ,makeespymacro(:espy_record,out,key,o.value))  # @espy_record out key b
                 else                                                            #  a,... =
-                    push!(newleft,o)                                            # (a...)
+                    left = (left...,o)                                          # (a,...)
                 end
             end
-            exo = makeblock(makeassign(maketuple(newleft...),right),            # (a,b) = @espy_call out key foo(x,y,z)
-                            rec...)                                             # @espy_record out key b
+            left = maketuple(left...)
         elseif isquote(left)                                                    #:a = ...
-            exo = makeblock(makeassign(left.value,right),                       # a = ...
-                            makeespymacro(:espy_record,out,key,left.value))         # @espy_record out key a
-        else                                                                    # a = ...
-            exo = ex
+            left = left.value                                                   # a = ...
+            push!(rec    ,makeespymacro(:espy_record,out,key,left))             # @espy_record out key a
         end
+        exo = makeblock(makeassign(left,right),rec...)
     else
         trace && println("recursion")
         exo = Expr(ex.head,[espy_(a,out,key,trace) for a ∈ ex.args]...)
     end
+
     return exo
 end
-espy_(ex,out,key,trace=false) = ex
-
+function espy_(ex,out,key,trace=false)
+    trace && println("default")
+    return ex
+end
 """
 
     @espy function residual(x,y)
@@ -450,7 +452,7 @@ See also: [`@espydbg`](@ref), [`@request`](@ref), [`makekey`](@ref)
 """
 macro espy(ex)
     cleancode = dequote(ex)
-    espycode  = espy_(ex,newsym(:espy_key),newsym(:espy_out))
+    espycode  = espy_(ex,newsym(:espy_key),newsym(:espy_out),false)
     return makeblock(esc(espycode),esc(cleancode))
 end
 """

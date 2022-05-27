@@ -1,4 +1,4 @@
-using Test,Printf
+using Test,Printf#,Documenter
 @printf "\nEspy test suite\n"
 
 # Tests should be
@@ -8,5 +8,7 @@ using Test,Printf
 
 @testset "EspyInsideFunction.jl package" begin
     include("TestEspy.jl")
+    include("EspyDemo.jl")
+    #doctest("EspyInsideFunction")
 end
 println(" ") # suppresses unwanted text output
