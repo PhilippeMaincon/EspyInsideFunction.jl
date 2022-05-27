@@ -31,7 +31,7 @@ function's code
    Typicaly, this version of the code is called once the computations have been completed (using the fast version), to extract
    the requested results.
 
-A complete example can be found in [`EspyDemo.jl`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/test/EspyDemo.jl)
+A complete usage example can be found in [`EspyDemo.jl`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/test/EspyDemo.jl)
 
 ## [Code markup](@id code-markup)
 
