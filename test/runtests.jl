@@ -1,14 +1,9 @@
-using Test,Printf#,Documenter
-@printf "\nEspy test suite\n"
-
-# Tests should be
-# fast
-# silent
-# test high and low level components
+using Test,Documenter,EspyInsideFunction
+println("\nEspy test suite\n")
 
 @testset "EspyInsideFunction.jl package" begin
     include("TestEspy.jl")
     include("EspyDemo.jl")
-    #doctest("EspyInsideFunction")
+    doctest(EspyInsideFunction)
 end
-println(" ") # suppresses unwanted text output
+;
