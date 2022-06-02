@@ -15,7 +15,7 @@ The need for `EspyInsideFunction` arises when there is a difference between
 
 An example is the extraction of results in
 a finite element software. The code for an element type must include a function that takes in
-the degrees of freedom (in mechanics: nodel displacements) and output the element's
+the degrees of freedom (in mechanics: nodal displacements) and output the element's
 contributions to the residuals (forces). The user is interested in intermediate results such as stresses and strains.
 
 Writing the function to explicitly export intermediate results clutters the element code, the element API, and the rest of the software.
@@ -23,12 +23,12 @@ Writing the function to explicitly export intermediate results clutters the elem
 `EspyInsideFunction`'s approach to this problem is to use metaprogramming to generate two versions of the
 function's code
 
-1. The fast version, that does nothing to save or export internediate results.  This is then
+1. The fast version, that does nothing to save or export intermediate results.  This is then
    used in e.g. the finite element solution process.
 2. The exporting version.  In it receives additional parameters
    - a vector `out`, to be filled with the requested results.
    - a `key` describing which internal results are wanted and where in `out` to store which result.
-   Typicaly, this version of the code is called once the computations have been completed (using the fast version), to extract
+   Typically, this version of the code is called once the computations have been completed (using the fast version), to extract
    the requested results.
 
 A complete usage example can be found in [`EspyDemo.jl`](https://github.com/PhilippeMaincon/EspyInsideFunction.jl/blob/master/test/EspyDemo.jl)
@@ -76,8 +76,8 @@ requestable(e::Element) = (w=scalar, R=(2,), gp=
 requestable (generic function with 2 methods)
 ```
 
-The code of each function is prepended with `@espy`.  The name of variables of interest is annotated with a `:` ( for example `:ε` and `:σ`). These variable names
-must appear on the left of an assignment, and can not be expressions that would otherwise be acceptable at the left of an assigment (writing `:a[igp] = ...` or `:a.b`will not work). Calls to sub-functions which are themselves annotated with @espy must be annotated with a `:` (as in `σ   = :material(e.mat,ε)`).
+The code of each function is pre-pended with `@espy`.  The name of variables of interest is annotated with a `:` ( for example `:ε` and `:σ`). These variable names
+must appear on the left of an assignment, and can not be expressions that would otherwise be acceptable at the left of an assignment (writing `:a[igp] = ...` or `:a.b`will not work). Calls to sub-functions which are themselves annotated with @espy must be annotated with a `:` (as in `σ   = :material(e.mat,ε)`).
 
 The last line of code (`requestable`) provides the obtainable intermediate results and their sizes.  See Section [Requestable](@ref requestable) for more details.
 
@@ -142,7 +142,7 @@ the choice being made made to provide this as a method associated to `Element`.
 for igp = 1:ngp
 ```
 
-where the letters `gp` refer to the expression `gp=forloop(...)`. The currect version of `EspyInsideFunction.jl` is not flexible on this point: it must be a `for` loop (not a `while` loop or comprehension), the index variable must be `igp` (`gp` from `gp=forloop(...)` perfixed by `i`), and the upper bound must be `ngp`.
+where the letters `gp` refer to the expression `gp=forloop(...)`. The correct version of `EspyInsideFunction.jl` is not flexible on this point: it must be a `for` loop (not a `while` loop or comprehension), the index variable must be `igp` (`gp` from `gp=forloop(...)` prefixed by `i`), and the upper bound must be `ngp`.
 
 Where some of the variables are arrays, their size must be described, using `Tuples`:
 
@@ -227,7 +227,7 @@ key.gp[8].material.σ == [29 31;30 32]
 
 ## Obtaining and accessing the outputs
 
-The following example shows how the user of an espy-annotated function can obtain and access the `out` variable. Continuing with the example from Section [Code markup](@ref code-markup), we assume that we have the results `ΔX` for which we want to extract intermediate results.  Typicaly `ΔX` has been obtained in a numerical procedure that made use of the fast code generated from the annotated code.  For a simple example:
+The following example shows how the user of an espy-annotated function can obtain and access the `out` variable. Continuing with the example from Section [Code markup](@ref code-markup), we assume that we have the results `ΔX` for which we want to extract intermediate results.  Typically `ΔX` has been obtained in a numerical procedure that made use of the fast code generated from the annotated code.  For a simple example:
 
 ```jldoctest EspyDemo; output = false
 nel  = 10
@@ -240,7 +240,7 @@ igp  = 1
 1
 ```
 
-In this case, the code extracts and agregates results from multiple calls to `force`:
+In this case, the code extracts and aggregates results from multiple calls to `force`:
 
 ```jldoctest EspyDemo; output = false
 out = Matrix{Float64}(undef,nkey,nel)
@@ -255,24 +255,25 @@ end
 1.3080000000000017e-6
 ```
 
-`nkey` (obtained from `makekey`) is used to allocate `out`. `out` and `key` are passed to the exporting version of `force`. In this example where results are agregated to multiple calls to `force`, care must be taken not to pass `out[:,iel]`, but `@view(out[:,iel])` so that `force` can modify the content of the slice. 
+`nkey` (obtained from `makekey`) is used to allocate `out`. `out` and `key` are passed to the exporting version of `force`. In this example where results are aggregated to multiple calls to `force`, care must be taken not to pass `out[:,iel]`, but `@view(out[:,iel])` so that `force` can modify the content of the slice. 
 
 In the two last lines of the code, `key` is used to access specific outputs. 
 
 ## Which variables types can be exported in this way?
 
-`EspyInsideFunction` is made to store all results from a function inside a single array (e.g. `out`).  This allows to agregate large amounts of data, often produced in multiple calls to the same function, with only a single allocation.  
+`EspyInsideFunction` is made to store all results from a function inside a single array (e.g. `out`).  This allows to aggregate large amounts of data, often produced in multiple calls to the same function, with only a single allocation.  
 
 If `var` is a scalar, the code inserted by `@espy` to capture an intermediate result is of the form `out[key.var] = var`,
 so `var` must convert to the `eltype` of `out`. 
 
-If `var` is a container, `key.var` is an array of integers, and the inserted code is `out[key.var] .= var`.  This assigment works for array-like containers, including `Array`, `StaticArray` and `ntuple`. A normal `Array` can be used, but its size must be defined as a constant, in `requestable`.
-
+If `var` is a container, `key.var` is an array of integers, and the inserted code is `out[key.var] .= var`.  This assignment works for array-like containers, including `Array`, `StaticArray` and `ntuple`. A normal `Array` can be used, but its size must be defined as a constant, in `requestable`.
 
 # Reference
+
 ```@meta
 CurrentModule = EspyInsideFunction
 ```
+
 ```@docs
 @request
 makekey
